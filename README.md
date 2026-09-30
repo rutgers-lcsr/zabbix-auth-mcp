@@ -114,7 +114,10 @@ though the public DNS name points at the proxy rather than at services.
 
 3. **Start it.** `docker compose up -d --build`. `docker compose logs`
    should show uvicorn listening on 443 and zabbix-mcp-server registering
-   its tools.
+   its tools. Before the cert exists, start with
+   `docker compose -f docker-compose.yml -f compose.bootstrap.yml up -d`
+   instead: that serves the port-80 redirect the issuance needs and skips
+   TLS. Once the cert has arrived, `docker compose up -d --force-recreate`.
 
 4. **Check.** `curl https://<name>/.well-known/oauth-authorization-server`
    should return JSON, and `curl -i https://<name>/mcp` should return a

@@ -1,0 +1,15 @@
+# First start, before the cert exists. Serves the port-80 redirect so Let's
+# Encrypt can validate the name through services, and plain http on 443
+# (useless but harmless) instead of failing on the missing cert files.
+#
+#   docker compose -f docker-compose.yml -f compose.bootstrap.yml up -d
+#
+# Once /etc/letsencrypt/live/<name>/cert.pem exists, go back to the real
+# thing:
+#
+#   docker compose up -d --force-recreate
+services:
+  zabbix-auth-mcp:
+    environment:
+      - SSL_CERTFILE=
+      - SSL_KEYFILE=
