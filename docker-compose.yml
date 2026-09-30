@@ -1,0 +1,49 @@
+# Runs on popek as its own compose project, the same way as grafana-auth-mcp.
+# The proxy has its own public address on the macvlan-vlan4 network and serves
+# https on 443 there, plus port 80 for redirects only. It is also on the
+# project's default bridge network, which is how it reaches zabbix-mcp-server;
+# gw_priority keeps the default route on the VLAN side so replies to clients
+# leave through the VLAN gateway.
+services:
+  zabbix-auth-mcp:
+    build: .
+    container_name: zabbix-auth-mcp
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=443
+      - HTTP_PORT=80
+      - MCP_BACKEND_URL=http://zabbix-mcp-server:8080/mcp
+      - DB_PATH=/data/zabbix-auth-mcp.sqlite3
+      - SSL_CERTFILE=/etc/letsencrypt/live/${CERT_NAME}/fullchain.pem
+      - SSL_KEYFILE=/etc/letsencrypt/live/${CERT_NAME}/privkey.pem
+    volumes:
+      - ./data:/data
+      - /etc/letsencrypt/live/${CERT_NAME}:/etc/letsencrypt/live/${CERT_NAME}:ro
+    networks:
+      vlan4:
+        ipv4_address: ${IPV4_ADDRESS}
+        gw_priority: 1
+      default: {}
+    depends_on:
+      - zabbix-mcp-server
+
+  # The LCSR fork of initMAX/zabbix-mcp-server, which accepts the user's own
+  # Zabbix API token from us in X-Zabbix-Token (see its FORK.md). Built
+  # straight from the fork's branch. Default bridge network only: reachable
+  # from zabbix-auth-mcp, from nothing else. It reaches Zabbix through popek's
+  # host and the VLAN router.
+  zabbix-mcp-server:
+    build: https://github.com/rutgers-lcsr/zabbix-mcp-server.git#per-user-token
+    container_name: zabbix-mcp-server
+    restart: unless-stopped
+    environment:
+      # Substituted into config.toml's auth_token by the server itself.
+      - MCP_BACKEND_TOKEN=${MCP_BACKEND_TOKEN}
+    volumes:
+      - ./zabbix-mcp/config.toml:/etc/zabbix-mcp/config.toml:ro
+
+networks:
+  vlan4:
+    external: true
+    name: macvlan-vlan4

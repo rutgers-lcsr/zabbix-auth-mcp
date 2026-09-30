@@ -1,0 +1,27 @@
+# zabbix-mcp-server (the rutgers-lcsr fork) as run behind zabbix-auth-mcp.
+# Mounted read-only into the container; nothing else in the image's
+# config.example.toml is needed. Restart the service after editing.
+
+[server]
+transport = "http"
+host = "0.0.0.0"
+port = 8080
+log_level = "info"
+# The shared secret zabbix-auth-mcp presents on every request
+# (MCP_BACKEND_TOKEN in .env, passed in as an environment variable).
+auth_token = "${MCP_BACKEND_TOKEN}"
+# The user's Zabbix API token arrives in this header. It is only honoured from
+# a trusted proxy; this container is on the compose bridge network alone with
+# zabbix-auth-mcp, so every private address is that proxy.
+trusted_proxies = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+zabbix_token_header = "X-Zabbix-Token"
+
+[zabbix.lcsr]
+url = "https://sarek.lcsr.rutgers.edu/zabbix"
+# Never used for a request from zabbix-auth-mcp: each one carries the user's
+# own token, and a request without one is refused rather than run as a shared
+# account. The server insists on a value, so it gets one that opens nothing.
+api_token = "no-shared-token"
+# Whether a write is allowed is for Zabbix to decide from the user's role;
+# that is the point of the fork. Set true to make every tool read-only.
+read_only = false
