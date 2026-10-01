@@ -210,6 +210,7 @@ def test_full_flow_and_proxy(client):
     seen = r.json()["seen_headers"]
     assert seen["authorization"] == "Bearer backend-secret", "caller token is swapped for the backend token"
     assert seen["x-zabbix-token"] == "ztok-alice", "the token Zabbix issued to alice at login, not the forged one"
+    assert seen["host"] == "mcp.test", "the public name, which zabbix-mcp-server checks against its public_url"
     assert seen["mcp-session-id"] == "sess-1" and seen["accept"] == "application/json, text/event-stream"
     assert "origin" not in seen and "cookie" not in seen
     assert r.headers["mcp-session-id"] == "sess-1" and "x-internal" not in r.headers

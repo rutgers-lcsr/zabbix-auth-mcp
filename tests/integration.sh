@@ -22,6 +22,8 @@ trap cleanup EXIT
 waitfor() { for _ in $(seq 1 60); do curl -sf "$1" >/dev/null && return; sleep 0.5; done; echo "timeout waiting for $1"; exit 2; }
 
 echo "--- starting fake Zabbix ($ZPORT), the fork ($MPORT) and the proxy ($PPORT)"
+export BASE_URL=http://127.0.0.1:$PPORT MCP_BACKEND_URL=http://127.0.0.1:$MPORT/mcp MCP_BACKEND_TOKEN=it-secret \
+       ZABBIX_URL=http://127.0.0.1:$ZPORT/zabbix ALLOWED_USERS= DB_PATH=$WORK/db.sqlite3
 python3 tests/fake_zabbix.py "$ZPORT" "$WORK/zabbix.log" & ZB=$!
 cat > "$WORK/config.toml" <<CFG
 [server]
@@ -29,6 +31,7 @@ transport = "http"
 host = "127.0.0.1"
 port = $MPORT
 auth_token = "it-secret"
+public_url = "$BASE_URL"
 trusted_proxies = ["127.0.0.1"]
 zabbix_token_header = "X-Zabbix-Token"
 
@@ -38,8 +41,6 @@ api_token = "no-shared-token"
 read_only = false
 CFG
 (cd "$WORK" && "$FORK" --config "$WORK/config.toml" > "$WORK/fork.log" 2>&1) & MC=$!
-export BASE_URL=http://127.0.0.1:$PPORT MCP_BACKEND_URL=http://127.0.0.1:$MPORT/mcp MCP_BACKEND_TOKEN=it-secret \
-       ZABBIX_URL=http://127.0.0.1:$ZPORT/zabbix ALLOWED_USERS= DB_PATH=$WORK/db.sqlite3
 ./.venv/bin/uvicorn main:app --host 127.0.0.1 --port $PPORT > "$WORK/proxy.log" 2>&1 & UV=$!
 waitfor "http://127.0.0.1:$MPORT/health"
 waitfor "http://127.0.0.1:$PPORT/healthz"

@@ -7,6 +7,9 @@ transport = "http"
 host = "0.0.0.0"
 port = 8080
 log_level = "info"
+# The public address, as zabbix-auth-mcp's BASE_URL. zabbix-auth-mcp forwards
+# requests with this Host header and the server only accepts that host.
+public_url = "https://zabbix-mcp.lcsr.rutgers.edu"
 # The shared secret zabbix-auth-mcp presents on every request
 # (MCP_BACKEND_TOKEN in .env, passed in as an environment variable).
 auth_token = "${MCP_BACKEND_TOKEN}"
@@ -25,3 +28,8 @@ api_token = "no-shared-token"
 # Whether a write is allowed is for Zabbix to decide from the user's role;
 # that is the point of the fork. Set true to make every tool read-only.
 read_only = false
+
+[reporting]
+# zabbix-auth-mcp forwards only /mcp, so a download link would be dead.
+# Generated reports still come back as MCP resources.
+download_urls = false

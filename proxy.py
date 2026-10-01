@@ -6,6 +6,7 @@ streams the answer back.
 """
 import json
 import logging
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Request
@@ -32,6 +33,11 @@ FORWARD_RESPONSE_HEADERS = {"content-type", "mcp-session-id", "mcp-protocol-vers
 client = httpx.AsyncClient(timeout=httpx.Timeout(10, read=None))
 
 RESOURCE_METADATA_URL = f"{config.BASE_URL}/.well-known/oauth-protected-resource/mcp"
+
+# zabbix-mcp-server validates the Host header against its [server].public_url
+# (the MCP spec's DNS-rebinding protection), so it sees the public name, as
+# it would behind any reverse proxy, not the compose service name.
+PUBLIC_HOST = urlsplit(config.BASE_URL).netloc
 
 
 def _unauthorized(description: str, invalid_token: bool) -> JSONResponse:
@@ -72,6 +78,7 @@ async def mcp(request: Request):
     log.info("user=%s %s %s", access["username"], request.method, _describe(body))
 
     headers = {k: v for k, v in request.headers.items() if k in FORWARD_REQUEST_HEADERS or k.startswith("mcp-param-")}
+    headers["Host"] = PUBLIC_HOST
     headers["Authorization"] = f"Bearer {config.MCP_BACKEND_TOKEN}"
     headers[config.ZABBIX_TOKEN_HEADER] = access["zabbix_token"]
     upstream = client.build_request(
