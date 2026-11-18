@@ -88,6 +88,18 @@ async def test_zabbix_64_takes_the_session_in_the_header(fake):
         assert c[2] == "sess-1" and not c[3] and c[4]
 
 
+async def test_zabbix_upgrade_while_running_is_picked_up_at_next_login(fake):
+    session, userid, _ = await zabbix.login("alice", "pw")
+    await zabbix.mint_token(session, userid, 1)
+    fake.version = "8.0.0"  # upgraded underneath us; 7.2+ rejects body "auth"
+    fake.calls.clear()
+    session, userid, _ = await zabbix.login("alice", "pw")
+    await zabbix.mint_token(session, userid, 1)
+    for c in fake.calls:
+        if c[0] != "user.login" and c[0] != "apiinfo.version":
+            assert not c[3] and c[4]
+
+
 async def test_mint_failure_still_logs_out_and_reports_the_zabbix_message(fake):
     fake.fail.add("token.create")
     with pytest.raises(zabbix.ZabbixError, match='No permissions to call "token.create"'):

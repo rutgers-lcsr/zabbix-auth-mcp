@@ -25,7 +25,8 @@ API_URL = f"{config.ZABBIX_URL}/api_jsonrpc.php"
 
 # Zabbix 6.4+ takes the session or token in an Authorization header; older
 # versions want it in the body as "auth" (and 7.2+ rejects "auth"). Decided
-# once, from apiinfo.version.
+# from apiinfo.version, again at each login so a Zabbix upgrade underneath a
+# running process is picked up.
 _header_auth: bool | None = None
 
 
@@ -69,6 +70,8 @@ async def _uses_header_auth(client: httpx.AsyncClient) -> bool:
 
 async def login(username: str, password: str) -> tuple[str, str, str]:
     """Check the credentials with Zabbix. Returns (session id, userid, username as Zabbix spells it)."""
+    global _header_auth
+    _header_auth = None
     async with httpx.AsyncClient(timeout=15) as client:
         try:
             user = await _call(client, "user.login", {"username": username, "password": password, "userData": True})
